@@ -42,7 +42,7 @@ pscs_256/
 ### 1️⃣ Clone the repository
 ```bash
 git clone https://github.com/Adithya140/pscs_256.git
-cd I.M.A.G.E
+cd pscs_256
 ````
 
 ### 2️⃣ Set up a Python environment
