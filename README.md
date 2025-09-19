@@ -81,13 +81,13 @@ This app uses **Google Generative AI (Gemini Vision)**. You’ll need to:
 
 ```bash
 # Mac/Linux
-export GOOGLE_API_KEY="your_api_key_here"
+export GOOGLE_API_KEY="your_api_key"
 
 # Windows (cmd)
-set GOOGLE_API_KEY="your_api_key_here"
+set GOOGLE_API_KEY="your_api_key"
 
 # Windows (PowerShell)
-$env:GOOGLE_API_KEY="your_api_key_here"
+$env:GOOGLE_API_KEY="your_api_key"
 ```
 
 ---
