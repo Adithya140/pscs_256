@@ -1,3 +1,4 @@
+#pip install -r requirements.txt
 from flask import Flask, render_template, request, jsonify
 import google.generativeai as genai
 import os
@@ -10,7 +11,6 @@ import time
 from typing import Dict, Optional
 from dotenv import load_dotenv
 import json
-from werkzeug.utils import secure_filename
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 
 # Configure Gemini API
-api_key = os.environ.get("GOOGLE_API_KEY")
+api_key = "AIzaSyAj7QePSFe7l4dVBBcfbLD8cYXt-uc2bH0"
 if not api_key:
     logger.error("GOOGLE_API_KEY environment variable not set")
     raise ValueError("GOOGLE_API_KEY environment variable is required")
@@ -27,11 +27,11 @@ if not api_key:
 genai.configure(api_key=api_key)
 
 app = Flask(__name__)
-app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max
 
 # Enhanced session storage with automatic cleanup
 class SessionManager:
-    def __init__(self, cleanup_interval: int = 300):  # 5 minutes
+    def __init__(self, cleanup_interval: int = 300):
         self.sessions: Dict[str, dict] = {}
         self.cleanup_interval = cleanup_interval
         self.start_cleanup_thread()
@@ -101,8 +101,10 @@ session_manager = SessionManager()
 def get_gemini_model():
     """Get Gemini model with fallback options"""
     models_to_try = [
-        'gemini-1.5-flash-latest',
+        'gemini-2.0-flash-exp',
         'gemini-1.5-flash',
+        'gemini-1.5-flash-latest',
+        'gemini-1.5-pro',
         'gemini-1.5-pro-latest',
         'gemini-pro-vision'
     ]
@@ -145,7 +147,7 @@ safety_settings = [
     }
 ]
 
-# Generation configuration for better responses
+# Generation configuration
 generation_config = {
     "temperature": 0.7,
     "top_p": 0.8,
@@ -153,44 +155,26 @@ generation_config = {
     "max_output_tokens": 2048,
 }
 
-def validate_image_file(file) -> tuple[bool, str]:
-    """Validate uploaded image file"""
-    if not file or file.filename == '':
-        return False, "No file selected"
-    
-    # Check file extension
-    allowed_extensions = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'tiff'}
-    file_ext = file.filename.rsplit('.', 1)[1].lower() if '.' in file.filename else ''
-    if file_ext not in allowed_extensions:
-        return False, f"Unsupported file type. Allowed: {', '.join(allowed_extensions)}"
-    
-    # Check MIME type
-    if not file.content_type or not file.content_type.startswith('image/'):
-        return False, "Invalid image file"
-    
-    return True, "Valid image file"
-
-def process_image_data(image_file) -> dict:
-    """Process and encode image data"""
+def process_webcam_frame(image_b64: str) -> dict:
+    """Process webcam frame data"""
     try:
-        image_bytes = image_file.read()
+        # Remove data URL prefix if present
+        if ',' in image_b64:
+            image_b64 = image_b64.split(',')[1]
         
-        # Reset file pointer for potential re-reading
-        image_file.seek(0)
-        
-        # Encode to base64
-        image_data = base64.b64encode(image_bytes).decode('utf-8')
+        # Decode base64
+        image_bytes = base64.b64decode(image_b64)
         
         return {
-            'mime_type': image_file.content_type,
+            'mime_type': 'image/jpeg',
             'data': image_bytes,
-            'data_b64': image_data,
-            'filename': secure_filename(image_file.filename),
+            'data_b64': image_b64,
+            'filename': f"webcam_frame_{uuid.uuid4().hex}.jpg",
             'size': len(image_bytes)
         }
     except Exception as e:
-        logger.error(f"Error processing image data: {e}")
-        raise ValueError("Failed to process image data")
+        logger.error(f"Error processing webcam frame: {e}")
+        raise ValueError("Failed to process webcam frame")
 
 @app.route('/')
 def index():
@@ -209,17 +193,17 @@ def health():
 
 @app.route('/start_chat', methods=['POST'])
 def start_chat():
-    """Handle initial image upload and first prompt"""
+    """Handle initial webcam frame and first prompt"""
     try:
-        # Validate request
-        if 'image' not in request.files:
-            return jsonify({'error': 'No image file provided'}), 400
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No JSON data provided'}), 400
         
-        if 'prompt' not in request.form:
-            return jsonify({'error': 'No prompt provided'}), 400
+        image_b64 = data.get('image_b64')
+        prompt_text = data.get('prompt', '').strip()
         
-        image_file = request.files['image']
-        prompt_text = request.form['prompt'].strip()
+        if not image_b64:
+            return jsonify({'error': 'No webcam frame received'}), 400
         
         if not prompt_text:
             return jsonify({'error': 'Prompt cannot be empty'}), 400
@@ -227,27 +211,22 @@ def start_chat():
         if len(prompt_text) > 2000:
             return jsonify({'error': 'Prompt too long (max 2000 characters)'}), 400
         
-        # Validate image
-        is_valid, error_message = validate_image_file(image_file)
-        if not is_valid:
-            return jsonify({'error': error_message}), 400
-        
         # Check model availability
         if not model:
             return jsonify({'error': 'AI model not available. Please try again later.'}), 503
         
-        # Process image
+        # Process webcam frame
         try:
-            image_data = process_image_data(image_file)
+            image_data = process_webcam_frame(image_b64)
         except ValueError as e:
             return jsonify({'error': str(e)}), 400
         
         # Create session
         session_id = session_manager.create_session(image_data)
         
-        # Prepare content for Gemini
+        # Prepare message with webcam frame
         user_message = {
-            'role': 'user', 
+            'role': 'user',
             'parts': [
                 {
                     'inline_data': {
@@ -259,8 +238,8 @@ def start_chat():
             ]
         }
         
-        # Generate response
         try:
+            # Generate response
             response = model.generate_content(
                 [user_message],
                 safety_settings=safety_settings,
@@ -271,7 +250,7 @@ def start_chat():
                 if response.candidates and response.candidates[0].finish_reason:
                     reason = response.candidates[0].finish_reason
                     if reason == "SAFETY":
-                        return jsonify({'error': 'Content blocked due to safety concerns. Please try a different prompt.'}), 400
+                        return jsonify({'error': 'Content blocked due to safety concerns. Please try different content.'}), 400
                     else:
                         return jsonify({'error': f'Response generation failed: {reason}'}), 500
                 else:
@@ -282,7 +261,7 @@ def start_chat():
             # Update session
             session_manager.update_session_history(session_id, user_message, model_message)
             
-            logger.info(f"Successfully started chat for session {session_id}")
+            logger.info(f"Started conversation for session {session_id}")
             
             return jsonify({
                 'session_id': session_id,
@@ -290,11 +269,7 @@ def start_chat():
             })
             
         except Exception as e:
-            # Clean up session on failure
-            if session_id in session_manager.sessions:
-                del session_manager.sessions[session_id]
-            
-            logger.error(f"Error generating content: {e}")
+            logger.error(f"Error generating initial response: {e}")
             return jsonify({'error': 'Failed to generate response. Please try again.'}), 500
     
     except Exception as e:
@@ -330,19 +305,18 @@ def chat():
         if not model:
             return jsonify({'error': 'AI model not available. Please try again later.'}), 503
         
-        # Rate limiting: max 50 messages per session
+        # Rate limiting
         if session.get('message_count', 0) >= 50:
-            return jsonify({'error': 'Message limit reached for this session. Please start a new conversation.'}), 429
+            return jsonify({'error': 'Message limit reached. Please start a new conversation.'}), 429
         
         # Prepare message
         user_message = {'role': 'user', 'parts': [{'text': prompt_text}]}
         
-        # Generate response with full context
         try:
-            # Build conversation history for context
+            # Build conversation history
             conversation_history = []
             
-            # Add initial image context if it's the first few messages
+            # Add initial webcam frame context for recent messages
             if session.get('message_count', 0) < 5:
                 conversation_history.append({
                     'role': 'user',
@@ -353,7 +327,7 @@ def chat():
                                 'data': session['image']['data_b64']
                             }
                         },
-                        {'text': '[Image context for ongoing conversation]'}
+                        {'text': '[Webcam frame context for ongoing conversation]'}
                     ]
                 })
             
@@ -364,6 +338,7 @@ def chat():
             # Add current message
             conversation_history.append(user_message)
             
+            # Generate response
             response = model.generate_content(
                 conversation_history,
                 safety_settings=safety_settings,
@@ -374,7 +349,7 @@ def chat():
                 if response.candidates and response.candidates[0].finish_reason:
                     reason = response.candidates[0].finish_reason
                     if reason == "SAFETY":
-                        return jsonify({'error': 'Message blocked due to safety concerns. Please try a different message.'}), 400
+                        return jsonify({'error': 'Message blocked due to safety concerns.'}), 400
                     else:
                         return jsonify({'error': f'Response generation failed: {reason}'}), 500
                 else:
@@ -407,13 +382,11 @@ def transcribe():
         if not audio_file or audio_file.filename == '':
             return jsonify({'error': 'No audio file selected'}), 400
         
-        # Check model availability
         if not model:
-            return jsonify({'error': 'AI model not available. Please try again later.'}), 503
+            return jsonify({'error': 'AI model not available.'}), 503
         
         try:
-            # Prepare transcription request
-            transcription_prompt = "Please transcribe the following audio accurately. Only return the transcribed text, no additional commentary:"
+            transcription_prompt = "Transcribe the following audio accurately. Only return the transcribed text:"
             
             response = model.generate_content([
                 transcription_prompt,
@@ -424,13 +397,12 @@ def transcribe():
             ])
             
             if not response.text:
-                return jsonify({'error': 'Failed to transcribe audio. Please try again.'}), 500
+                return jsonify({'error': 'Failed to transcribe audio.'}), 500
             
-            # Clean up the transcription (remove extra whitespace, etc.)
             transcript = response.text.strip()
             
             if len(transcript) < 2:
-                return jsonify({'error': 'Audio too short or unclear. Please try again.'}), 400
+                return jsonify({'error': 'Audio too short or unclear.'}), 400
             
             logger.info(f"Successfully transcribed audio: {len(transcript)} characters")
             
@@ -438,11 +410,11 @@ def transcribe():
             
         except Exception as e:
             logger.error(f"Error transcribing audio: {e}")
-            return jsonify({'error': 'Failed to process audio. Please try again.'}), 500
+            return jsonify({'error': 'Failed to process audio.'}), 500
     
     except Exception as e:
         logger.error(f"Unexpected error in transcribe: {e}")
-        return jsonify({'error': 'An unexpected error occurred. Please try again.'}), 500
+        return jsonify({'error': 'An unexpected error occurred.'}), 500
 
 @app.route('/chat_voice', methods=['POST'])
 def chat_voice():
@@ -464,27 +436,25 @@ def chat_voice():
         # Get session
         session = session_manager.get_session(session_id)
         if not session:
-            return jsonify({'error': 'Session not found or expired. Please start a new conversation.'}), 404
+            return jsonify({'error': 'Session not found or expired.'}), 404
         
-        # Check model availability
         if not model:
-            return jsonify({'error': 'AI model not available. Please try again later.'}), 503
+            return jsonify({'error': 'AI model not available.'}), 503
         
         # Rate limiting
         if session.get('message_count', 0) >= 50:
-            return jsonify({'error': 'Message limit reached for this session. Please start a new conversation.'}), 429
+            return jsonify({'error': 'Message limit reached.'}), 429
         
         try:
-            # Process audio file
             audio_bytes = audio_file.read()
             audio_b64 = base64.b64encode(audio_bytes).decode('utf-8')
             
             if len(audio_bytes) == 0:
                 return jsonify({'error': 'Audio file is empty'}), 400
             
-            # First, transcribe the audio
+            # Transcribe audio
             transcription_response = model.generate_content([
-                "Please transcribe the following audio accurately. Only return the transcribed text:",
+                "Transcribe the following audio accurately. Only return the transcribed text:",
                 {
                     "mime_type": audio_file.content_type,
                     "data": audio_b64
@@ -492,20 +462,19 @@ def chat_voice():
             ])
             
             if not transcription_response.text:
-                return jsonify({'error': 'Failed to transcribe audio. Please try again.'}), 500
+                return jsonify({'error': 'Failed to transcribe audio.'}), 500
             
             transcript = transcription_response.text.strip()
             
             if len(transcript) < 2:
-                return jsonify({'error': 'Audio too short or unclear. Please try again.'}), 400
+                return jsonify({'error': 'Audio too short or unclear.'}), 400
             
-            # Now process the transcribed text as a regular chat message
+            # Process as chat message
             user_message = {'role': 'user', 'parts': [{'text': transcript}]}
             
             # Build conversation history
             conversation_history = []
             
-            # Add image context for recent messages
             if session.get('message_count', 0) < 5:
                 conversation_history.append({
                     'role': 'user',
@@ -516,18 +485,15 @@ def chat_voice():
                                 'data': session['image']['data_b64']
                             }
                         },
-                        {'text': '[Image context for ongoing conversation]'}
+                        {'text': '[Webcam frame context]'}
                     ]
                 })
             
-            # Add recent history
             recent_history = session['history'][-10:] if len(session['history']) > 10 else session['history']
             conversation_history.extend(recent_history)
-            
-            # Add current transcribed message
             conversation_history.append(user_message)
             
-            # Generate AI response
+            # Generate response
             response = model.generate_content(
                 conversation_history,
                 safety_settings=safety_settings,
@@ -535,21 +501,12 @@ def chat_voice():
             )
             
             if not response.text:
-                if response.candidates and response.candidates[0].finish_reason:
-                    reason = response.candidates[0].finish_reason
-                    if reason == "SAFETY":
-                        return jsonify({'error': 'Voice message blocked due to safety concerns. Please try a different message.'}), 400
-                    else:
-                        return jsonify({'error': f'Response generation failed: {reason}'}), 500
-                else:
-                    return jsonify({'error': 'No response generated. Please try again.'}), 500
+                return jsonify({'error': 'No response generated.'}), 500
             
             model_message = {'role': 'model', 'parts': [{'text': response.text}]}
-            
-            # Update session
             session_manager.update_session_history(session_id, user_message, model_message)
             
-            logger.info(f"Successfully processed voice message for session {session_id}")
+            logger.info(f"Processed voice message for session {session_id}")
             
             return jsonify({
                 'transcript': transcript,
@@ -558,125 +515,37 @@ def chat_voice():
             
         except Exception as e:
             logger.error(f"Error processing voice chat: {e}")
-            return jsonify({'error': 'Failed to process voice message. Please try again.'}), 500
+            return jsonify({'error': 'Failed to process voice message.'}), 500
     
     except Exception as e:
         logger.error(f"Unexpected error in chat_voice: {e}")
-        return jsonify({'error': 'An unexpected error occurred. Please try again.'}), 500
-
-@app.route('/sessions/<session_id>', methods=['DELETE'])
-def delete_session(session_id):
-    """Delete a specific session"""
-    try:
-        if session_id in session_manager.sessions:
-            del session_manager.sessions[session_id]
-            logger.info(f"Deleted session: {session_id}")
-            return jsonify({'message': 'Session deleted successfully'})
-        else:
-            return jsonify({'error': 'Session not found'}), 404
-    except Exception as e:
-        logger.error(f"Error deleting session: {e}")
-        return jsonify({'error': 'Failed to delete session'}), 500
-
-@app.route('/sessions', methods=['GET'])
-def get_sessions():
-    """Get session statistics (for admin/debugging)"""
-    try:
-        stats = session_manager.get_session_stats()
-        return jsonify({
-            'active_sessions': stats['active_sessions'],
-            'total_messages': stats['total_messages'],
-            'sessions': [
-                {
-                    'id': session_id,
-                    'created_at': session_data['created_at'].isoformat(),
-                    'last_activity': session_data['last_activity'].isoformat(),
-                    'message_count': session_data['message_count'],
-                    'image_filename': session_data['image'].get('filename', 'unknown')
-                }
-                for session_id, session_data in session_manager.sessions.items()
-            ]
-        })
-    except Exception as e:
-        logger.error(f"Error getting sessions: {e}")
-        return jsonify({'error': 'Failed to get session information'}), 500
+        return jsonify({'error': 'An unexpected error occurred.'}), 500
 
 # Error handlers
 @app.errorhandler(404)
 def not_found_error(error):
     return jsonify({'error': 'Endpoint not found'}), 404
 
-@app.errorhandler(405)
-def method_not_allowed_error(error):
-    return jsonify({'error': 'Method not allowed'}), 405
-
 @app.errorhandler(413)
 def payload_too_large_error(error):
     return jsonify({'error': 'File too large. Maximum size is 16MB.'}), 413
 
-@app.errorhandler(429)
-def ratelimit_handler(error):
-    return jsonify({'error': 'Rate limit exceeded. Please try again later.'}), 429
-
 @app.errorhandler(500)
 def internal_error(error):
     logger.error(f"Internal server error: {error}")
-    return jsonify({'error': 'Internal server error. Please try again later.'}), 500
-
-@app.errorhandler(503)
-def service_unavailable_error(error):
-    return jsonify({'error': 'Service temporarily unavailable. Please try again later.'}), 503
-
-# Request logging middleware
-@app.before_request
-def log_request_info():
-    """Log incoming requests"""
-    if request.endpoint != 'health':  # Don't log health checks
-        logger.info(f"Request: {request.method} {request.path} from {request.remote_addr}")
-
-@app.after_request
-def log_response_info(response):
-    """Log outgoing responses"""
-    if request.endpoint != 'health':  # Don't log health check responses
-        logger.info(f"Response: {response.status_code} for {request.method} {request.path}")
-    return response
-
-# Context processors for templates
-@app.context_processor
-def inject_app_info():
-    """Inject app information into templates"""
-    return {
-        'app_name': 'Enhanced Image Chat',
-        'version': '2.0.0',
-        'model_available': model is not None
-    }
+    return jsonify({'error': 'Internal server error.'}), 500
 
 if __name__ == '__main__':
-    # Production-ready configuration
     port = int(os.environ.get('PORT', 5000))
     debug = os.environ.get('FLASK_ENV') == 'development'
     
-    logger.info(f"Starting Enhanced Image Chat server on port {port}")
+    logger.info(f"Starting Webcam Chat server on port {port}")
     logger.info(f"Debug mode: {debug}")
     logger.info(f"Model available: {model is not None}")
     
-    # In production, use a proper WSGI server like gunicorn
-    if debug:
-        app.run(
-            host='0.0.0.0',
-            port=port,
-            debug=True,
-            threaded=True
-        )
-    else:
-        # For production deployment
-        from waitress import serve
-        logger.info("Running with Waitress WSGI server")
-        serve(
-            app,
-            host='0.0.0.0',
-            port=port,
-            threads=4,
-            connection_limit=100,
-            cleanup_interval=30
-        )
+    app.run(
+        host='0.0.0.0',
+        port=port,
+        debug=debug,
+        threaded=True
+    )
