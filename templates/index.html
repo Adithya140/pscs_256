@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <titlle> Conversaional Image Reconition chatbot</title>
+    <title>Conversational Webcam Recognition Chatbot</title>
     <style>
         * {
             margin: 0;
@@ -19,7 +19,6 @@
             position: relative;
         }
 
-        /* Enhanced animated background */
         #canvas-bg {
             position: fixed;
             top: 0;
@@ -102,7 +101,7 @@
             overflow: hidden;
         }
 
-        .upload-section {
+        .webcam-section {
             width: 420px;
             background: linear-gradient(145deg, #f8f9ff 0%, #e8ecff 100%);
             padding: 32px;
@@ -113,7 +112,7 @@
             position: relative;
         }
 
-        .upload-section::before {
+        .webcam-section::before {
             content: '';
             position: absolute;
             top: 0;
@@ -124,13 +123,11 @@
             pointer-events: none;
         }
 
-        .upload-area {
-            border: 3px dashed #667eea;
+        .webcam-container {
+            border: 3px solid #667eea;
             border-radius: 20px;
-            padding: 48px 24px;
+            padding: 8px;
             text-align: center;
-            cursor: pointer;
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             background: rgba(255, 255, 255, 0.8);
             margin-bottom: 24px;
             position: relative;
@@ -138,112 +135,67 @@
             overflow: hidden;
         }
 
-        .upload-area::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            border-radius: 20px;
-            padding: 3px;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-            mask-composite: xor;
-            opacity: 0;
-            transition: opacity 0.4s ease;
+        #webcam {
+            width: 100%;
+            border-radius: 12px;
+            display: none;
+            background: #000;
         }
 
-        .upload-area:hover {
-            border-color: transparent;
-            background: rgba(255, 255, 255, 0.95);
-            transform: translateY(-4px) scale(1.02);
-            box-shadow: 
-                0 20px 40px rgba(102, 126, 234, 0.2),
-                0 0 0 1px rgba(255, 255, 255, 0.1);
-        }
-
-        .upload-area:hover::before {
-            opacity: 1;
-        }
-
-        .upload-area.dragover {
-            border-color: transparent;
-            background: linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%);
-            transform: scale(1.05);
-            box-shadow: 
-                0 25px 50px rgba(102, 126, 234, 0.25),
-                0 0 0 1px rgba(102, 126, 234, 0.2);
-        }
-
-        .upload-icon {
-            font-size: 3.5em;
-            margin-bottom: 20px;
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            filter: drop-shadow(0 4px 8px rgba(102, 126, 234, 0.3));
-        }
-
-        .upload-area:hover .upload-icon {
-            transform: scale(1.15) rotate(10deg);
-            filter: drop-shadow(0 8px 16px rgba(102, 126, 234, 0.4));
-        }
-
-        .upload-text {
+        .webcam-placeholder {
+            padding: 80px 24px;
             color: #667eea;
             font-size: 1.2em;
-            font-weight: 600;
-            margin-bottom: 12px;
-            background: linear-gradient(135deg, #667eea, #764ba2);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
         }
 
-        .upload-hint {
-            color: #8892b0;
-            font-size: 0.95em;
-            font-weight: 500;
-        }
-
-        .image-preview {
-            display: none;
+        .webcam-controls {
+            display: flex;
+            gap: 12px;
             margin-bottom: 24px;
             position: relative;
             z-index: 1;
         }
 
-        .image-preview img {
-            width: 100%;
-            border-radius: 16px;
-            box-shadow: 
-                0 16px 32px rgba(0, 0, 0, 0.2),
-                0 0 0 1px rgba(255, 255, 255, 0.1);
-            transition: transform 0.3s ease;
-        }
-
-        .image-preview img:hover {
-            transform: scale(1.02);
-        }
-
-        .remove-image {
-            position: absolute;
-            top: 8px;
-            right: 8px;
-            background: rgba(255, 107, 107, 0.9);
+        .webcam-btn {
+            flex: 1;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border: none;
-            border-radius: 50%;
-            width: 32px;
-            height: 32px;
+            padding: 18px 32px;
+            border-radius: 16px;
+            font-size: 1.05em;
+            font-weight: 600;
             cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 16px;
-            transition: all 0.3s ease;
-            backdrop-filter: blur(10px);
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
         }
 
-        .remove-image:hover {
-            background: rgba(255, 107, 107, 1);
-            transform: scale(1.1);
+        .webcam-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 35px rgba(102, 126, 234, 0.4);
+        }
+
+        .webcam-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .webcam-btn.stop-btn {
+            background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+        }
+
+        .capture-indicator {
+            display: none;
+            background: rgba(46, 213, 115, 0.9);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 12px;
+            margin-bottom: 16px;
+            text-align: center;
+            font-size: 0.9em;
+            position: relative;
+            z-index: 1;
         }
 
         .prompt-input {
@@ -297,19 +249,16 @@
             box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
         }
 
-        .start-btn::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-            transition: left 0.5s ease;
+        .start-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 35px rgba(102, 126, 234, 0.4);
         }
 
-        .start-btn:hover::before {
-            left: 100%;
+        .start-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);
         }
 
         .voice-start-btn {
@@ -324,17 +273,10 @@
             box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
             min-width: 56px;
         }
-        
-        .start-btn:hover, .voice-start-btn:hover {
+
+        .voice-start-btn:hover {
             transform: translateY(-3px);
             box-shadow: 0 12px 35px rgba(102, 126, 234, 0.4);
-        }
-
-        .start-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            transform: none;
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);
         }
         
         .voice-btn.recording, .voice-start-btn.recording {
@@ -546,56 +488,26 @@
             background: rgba(255, 107, 107, 0.9);
         }
 
-        /* Responsive Design */
         @media (max-width: 768px) {
             .chat-container {
                 width: 100vw;
                 height: 100vh;
                 margin: 0;
                 border-radius: 0;
-                box-shadow: none;
-            }
-
-            .header {
-                padding: 20px;
-                border-radius: 0;
-            }
-
-            .header h1 {
-                font-size: 2em;
-            }
-
-            .header p {
-                font-size: 1em;
             }
 
             .main-content {
                 flex-direction: column;
             }
 
-            .upload-section {
+            .webcam-section {
                 width: 100%;
                 max-height: 45%;
-                overflow-y: auto;
                 border-right: none;
                 border-bottom: 1px solid rgba(102, 126, 234, 0.1);
-                padding: 20px;
-            }
-
-            .upload-area {
-                padding: 32px 16px;
-            }
-
-            .messages {
-                padding: 20px;
-            }
-
-            .chat-input-area {
-                padding: 16px 20px;
             }
         }
 
-        /* Enhanced scrollbar */
         .messages::-webkit-scrollbar {
             width: 6px;
         }
@@ -609,24 +521,6 @@
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             border-radius: 10px;
         }
-
-        .messages::-webkit-scrollbar-thumb:hover {
-            background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
-        }
-
-        .upload-section::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        .upload-section::-webkit-scrollbar-track {
-            background: rgba(102, 126, 234, 0.05);
-            border-radius: 10px;
-        }
-
-        .upload-section::-webkit-scrollbar-thumb {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 10px;
-        }
     </style>
 </head>
 <body>
@@ -635,25 +529,30 @@
     
     <div class="chat-container">
         <div class="header">
-            <h1>Conversational Image recognition Chatbot</h1>
-            <p>Upload an image and start an intelligent conversation with advanced AI</p>
+            <h1>Conversational Webcam Recognition Chatbot</h1>
+            <p>Start your webcam and have an intelligent conversation with advanced AI</p>
         </div>
         
         <div class="main-content">
-            <div class="upload-section">
-                <div class="upload-area" id="uploadArea">
-                    <div class="upload-icon">📸</div>
-                    <div class="upload-text">Drop your image here</div>
-                    <div class="upload-hint">or click to browse • Supports JPG, PNG, GIF, WebP</div>
-                    <input type="file" id="imageInput" accept="image/*" style="display: none;">
+            <div class="webcam-section">
+                <div class="webcam-container">
+                    <video id="webcam" autoplay playsinline></video>
+                    <div class="webcam-placeholder" id="webcamPlaceholder">
+                        <div style="font-size: 3em; margin-bottom: 16px;">📹</div>
+                        <div>Click "Start Webcam" to begin</div>
+                    </div>
+                </div>
+
+                <div class="capture-indicator" id="captureIndicator">
+                    ✓ Frame captured for analysis
                 </div>
                 
-                <div class="image-preview" id="imagePreview">
-                    <img id="previewImg" alt="Preview">
-                    <button class="remove-image" id="removeImage">×</button>
+                <div class="webcam-controls">
+                    <button class="webcam-btn" id="startWebcamBtn">📹 Start Webcam</button>
+                    <button class="webcam-btn stop-btn" id="stopWebcamBtn" style="display: none;">⏹️ Stop Webcam</button>
                 </div>
                 
-                <textarea class="prompt-input" id="promptInput" placeholder="What would you like to know about this image? Be specific for better results..." rows="3"></textarea>
+                <textarea class="prompt-input" id="promptInput" placeholder="What would you like to know? (webcam frame will be captured automatically)..." rows="3"></textarea>
                 
                 <div class="btn-container">
                     <button class="start-btn" id="startBtn" disabled>
@@ -667,9 +566,9 @@
                 <div class="messages" id="messages">
                     <div class="welcome-message">
                         <div class="icon">🤖</div>
-                        <div>Upload an image to begin your conversation with AI!</div>
+                        <div>Start your webcam to begin your conversation with AI!</div>
                         <div style="margin-top: 16px; font-size: 0.9em; opacity: 0.8;">
-                            Supported formats: JPG, PNG, GIF, WebP • Max size: 10MB
+                            The AI will analyze what your webcam sees in real-time
                         </div>
                     </div>
                 </div>
@@ -692,11 +591,11 @@
 
     <script>
         // DOM Elements
-        const uploadArea = document.getElementById('uploadArea');
-        const imageInput = document.getElementById('imageInput');
-        const imagePreview = document.getElementById('imagePreview');
-        const previewImg = document.getElementById('previewImg');
-        const removeImage = document.getElementById('removeImage');
+        const webcam = document.getElementById('webcam');
+        const webcamPlaceholder = document.getElementById('webcamPlaceholder');
+        const startWebcamBtn = document.getElementById('startWebcamBtn');
+        const stopWebcamBtn = document.getElementById('stopWebcamBtn');
+        const captureIndicator = document.getElementById('captureIndicator');
         const promptInput = document.getElementById('promptInput');
         const startBtn = document.getElementById('startBtn');
         const voiceStartBtn = document.getElementById('voiceStartBtn');
@@ -712,48 +611,33 @@
         
         // State variables
         let currentSessionId = null;
-        let selectedImage = null;
+        let webcamStream = null;
+        let isWebcamActive = false;
         let mediaRecorder = null;
         let audioChunks = [];
         let isRecording = false;
         let messageCount = 0;
 
-        // Enhanced canvas animation
+        // Canvas animation
         let particles = [];
         const particleCount = 150;
-        let animationId;
 
         class Particle {
-            constructor(x, y) {
-                this.x = x || Math.random() * canvas.width;
-                this.y = y || Math.random() * canvas.height;
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
                 this.size = Math.random() * 3 + 1;
                 this.speedX = (Math.random() - 0.5) * 0.8;
                 this.speedY = (Math.random() - 0.5) * 0.8;
-                this.hue = Math.random() * 60 + 200; // Blue to purple range
+                this.hue = Math.random() * 60 + 200;
                 this.opacity = Math.random() * 0.6 + 0.2;
-                this.life = Math.random() * 300 + 200;
-                this.maxLife = this.life;
             }
 
             update() {
                 this.x += this.speedX;
                 this.y += this.speedY;
-                this.life--;
-
-                if (this.life <= 0 || this.x < 0 || this.x > canvas.width || this.y < 0 || this.y > canvas.height) {
-                    this.reset();
-                }
-
-                this.opacity = (this.life / this.maxLife) * 0.6;
-            }
-
-            reset() {
-                this.x = Math.random() * canvas.width;
-                this.y = Math.random() * canvas.height;
-                this.life = this.maxLife;
-                this.hue = Math.random() * 60 + 200;
-                this.opacity = Math.random() * 0.6 + 0.2;
+                if (this.x < 0 || this.x > canvas.width) this.speedX *= -1;
+                if (this.y < 0 || this.y > canvas.height) this.speedY *= -1;
             }
 
             draw() {
@@ -778,113 +662,95 @@
 
         function animateCanvas() {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
             particles.forEach(particle => {
                 particle.update();
                 particle.draw();
             });
-            
-            animationId = requestAnimationFrame(animateCanvas);
+            requestAnimationFrame(animateCanvas);
         }
 
-        // Initialize canvas
         window.addEventListener('resize', initCanvas);
         window.addEventListener('load', () => {
             initCanvas();
             animateCanvas();
         });
 
-        // Upload area interactions
-        uploadArea.addEventListener('click', () => imageInput.click());
-        uploadArea.addEventListener('dragover', handleDragOver);
-        uploadArea.addEventListener('dragleave', handleDragLeave);
-        uploadArea.addEventListener('drop', handleDrop);
-        imageInput.addEventListener('change', handleImageSelect);
-        removeImage.addEventListener('click', clearImage);
+        // Webcam functionality
+        startWebcamBtn.addEventListener('click', startWebcam);
+        stopWebcamBtn.addEventListener('click', stopWebcam);
 
-        function handleDragOver(e) {
-            e.preventDefault();
-            uploadArea.classList.add('dragover');
-        }
-
-        function handleDragLeave(e) {
-            e.preventDefault();
-            if (!uploadArea.contains(e.relatedTarget)) {
-                uploadArea.classList.remove('dragover');
-            }
-        }
-
-        function handleDrop(e) {
-            e.preventDefault();
-            uploadArea.classList.remove('dragover');
-            const files = e.dataTransfer.files;
-            if (files.length > 0) {
-                handleImageFile(files[0]);
-            }
-        }
-
-        function handleImageSelect(e) {
-            const file = e.target.files[0];
-            if (file) {
-                handleImageFile(file);
-            }
-        }
-
-        function handleImageFile(file) {
-            // Enhanced file validation
-            if (!file.type.startsWith('image/')) {
-                showError('Please select a valid image file (JPG, PNG, GIF, WebP).');
-                return;
-            }
-
-            // Check file size (10MB limit)
-            if (file.size > 10 * 1024 * 1024) {
-                showError('File size too large. Please choose an image under 10MB.');
-                return;
-            }
-
-            selectedImage = file;
-            const reader = new FileReader();
-            
-            reader.onload = (e) => {
-                previewImg.src = e.target.result;
-                imagePreview.style.display = 'block';
+        async function startWebcam() {
+            try {
+                webcamStream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 },
+                        facingMode: 'user'
+                    } 
+                });
+                
+                webcam.srcObject = webcamStream;
+                webcam.style.display = 'block';
+                webcamPlaceholder.style.display = 'none';
+                startWebcamBtn.style.display = 'none';
+                stopWebcamBtn.style.display = 'block';
+                isWebcamActive = true;
+                
                 updateStartButton();
-                showStatus('Image loaded successfully', 'connected');
-            };
-            
-            reader.onerror = () => {
-                showError('Failed to load image. Please try another file.');
-            };
-            
-            reader.readAsDataURL(file);
+                showStatus('Webcam started', 'connected');
+            } catch (err) {
+                console.error('Error accessing webcam:', err);
+                let errorMessage = 'Could not access webcam. ';
+                if (err.name === 'NotAllowedError') {
+                    errorMessage += 'Please grant webcam permission and try again.';
+                } else if (err.name === 'NotFoundError') {
+                    errorMessage += 'No webcam found.';
+                } else {
+                    errorMessage += 'Please check your webcam and try again.';
+                }
+                showError(errorMessage);
+                showStatus('Webcam error', 'error');
+            }
         }
 
-        function clearImage() {
-            selectedImage = null;
-            imagePreview.style.display = 'none';
-            previewImg.src = '';
-            imageInput.value = '';
-            updateStartButton();
+        function stopWebcam() {
+            if (webcamStream) {
+                webcamStream.getTracks().forEach(track => track.stop());
+                webcam.srcObject = null;
+                webcam.style.display = 'none';
+                webcamPlaceholder.style.display = 'block';
+                startWebcamBtn.style.display = 'block';
+                stopWebcamBtn.style.display = 'none';
+                isWebcamActive = false;
+                updateStartButton();
+                showStatus('Webcam stopped', 'connected');
+            }
+        }
+
+        function captureFrame() {
+            const canvas = document.createElement('canvas');
+            canvas.width = webcam.videoWidth;
+            canvas.height = webcam.videoHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(webcam, 0, 0);
+            return canvas.toDataURL('image/jpeg', 0.8);
+        }
+
+        function showCaptureIndicator() {
+            captureIndicator.style.display = 'block';
+            setTimeout(() => {
+                captureIndicator.style.display = 'none';
+            }, 2000);
         }
 
         function updateStartButton() {
-            const hasImage = selectedImage !== null;
+            const hasWebcam = isWebcamActive;
             const hasPrompt = promptInput.value.trim().length > 0;
-            startBtn.disabled = !(hasImage && hasPrompt);
-            
-            if (hasImage && hasPrompt) {
-                startBtn.style.opacity = '1';
-                startBtn.style.cursor = 'pointer';
-            } else {
-                startBtn.style.opacity = '0.5';
-                startBtn.style.cursor = 'not-allowed';
-            }
+            startBtn.disabled = !(hasWebcam && hasPrompt);
         }
 
         promptInput.addEventListener('input', updateStartButton);
 
-        // Auto-resize textarea with enhanced logic
         function autoResize(textarea) {
             textarea.style.height = 'auto';
             const newHeight = Math.min(textarea.scrollHeight, 120);
@@ -899,7 +765,6 @@
             autoResize(this);
         });
 
-        // Enhanced keyboard shortcuts
         promptInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
@@ -916,34 +781,33 @@
             }
         });
 
-        // Start conversation with enhanced error handling
         startBtn.addEventListener('click', startConversation);
 
         async function startConversation() {
-            if (!selectedImage || !promptInput.value.trim()) {
-                showError('Please select an image and enter a prompt.');
+            if (!isWebcamActive || !promptInput.value.trim()) {
+                showError('Please start webcam and enter a prompt.');
                 return;
             }
 
-            const formData = new FormData();
-            formData.append('image', selectedImage);
-            formData.append('prompt', promptInput.value.trim());
+            const imageData = captureFrame();
+            showCaptureIndicator();
 
             showLoading(true);
             clearMessages();
             showStatus('Starting conversation...', 'connected');
 
             try {
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout
-
                 const response = await fetch('/start_chat', {
                     method: 'POST',
-                    body: formData,
-                    signal: controller.signal
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        image_b64: imageData,
+                        prompt: promptInput.value.trim()
+                    })
                 });
 
-                clearTimeout(timeoutId);
                 const data = await response.json();
 
                 if (response.ok) {
@@ -961,11 +825,7 @@
                     throw new Error(data.error || 'Failed to start conversation');
                 }
             } catch (error) {
-                if (error.name === 'AbortError') {
-                    showError('Request timed out. Please try again.');
-                } else {
-                    showError(error.message || 'Network error. Please check your connection.');
-                }
+                showError(error.message || 'Network error. Please check your connection.');
                 showStatus('Connection error', 'error');
                 console.error('Start conversation error:', error);
             } finally {
@@ -973,7 +833,6 @@
             }
         }
 
-        // Enhanced message sending
         sendBtn.addEventListener('click', sendMessage);
 
         async function sendMessage() {
@@ -986,9 +845,6 @@
             showLoading(true);
 
             try {
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 30000);
-
                 const response = await fetch('/chat', {
                     method: 'POST',
                     headers: {
@@ -997,11 +853,9 @@
                     body: JSON.stringify({
                         session_id: currentSessionId,
                         prompt: message
-                    }),
-                    signal: controller.signal
+                    })
                 });
 
-                clearTimeout(timeoutId);
                 const data = await response.json();
 
                 if (response.ok) {
@@ -1011,11 +865,7 @@
                     throw new Error(data.error || 'Failed to send message');
                 }
             } catch (error) {
-                if (error.name === 'AbortError') {
-                    showError('Request timed out. Please try again.');
-                } else {
-                    showError(error.message || 'Failed to send message. Please try again.');
-                }
+                showError(error.message || 'Failed to send message. Please try again.');
                 showStatus('Send failed', 'error');
                 console.error('Send message error:', error);
             } finally {
@@ -1024,7 +874,7 @@
             }
         }
         
-        // Enhanced voice functionality
+        // Voice functionality
         voiceBtn.addEventListener('click', () => toggleRecording('chat'));
         voiceStartBtn.addEventListener('click', () => toggleRecording('initial'));
 
@@ -1038,7 +888,6 @@
         
         async function startRecording(mode) {
             try {
-                // Check for microphone permission
                 const stream = await navigator.mediaDevices.getUserMedia({ 
                     audio: {
                         echoCancellation: true,
@@ -1047,28 +896,22 @@
                     } 
                 });
                 
-                const options = {
-                    mimeType: 'audio/webm;codecs=opus'
-                };
+                mediaRecorder = new MediaRecorder(stream, {
+                    mimeType: MediaRecorder.isTypeSupported('audio/webm;codecs=opus') 
+                        ? 'audio/webm;codecs=opus' 
+                        : 'audio/webm'
+                });
                 
-                if (!MediaRecorder.isTypeSupported(options.mimeType)) {
-                    options.mimeType = 'audio/webm';
-                }
-                
-                mediaRecorder = new MediaRecorder(stream, options);
-                mediaRecorder.start(1000); // Collect data every second
+                mediaRecorder.start(1000);
                 isRecording = true;
                 
                 if (mode === 'initial') {
                     voiceStartBtn.classList.add('recording');
                     voiceStartBtn.textContent = '🛑';
-                    voiceStartBtn.title = 'Stop Recording';
                     startBtn.disabled = true;
                 } else {
                     voiceBtn.classList.add('recording');
                     voiceBtn.textContent = '🛑';
-                    voiceBtn.title = 'Stop Recording';
-                    chatInput.placeholder = "🎤 Recording... Click stop when done";
                     chatInput.disabled = true;
                     sendBtn.disabled = true;
                 }
@@ -1107,16 +950,11 @@
                             formData.append('session_id', currentSessionId);
                         }
                         
-                        const controller = new AbortController();
-                        const timeoutId = setTimeout(() => controller.abort(), 45000); // Longer timeout for audio
-                        
                         const response = await fetch(endpoint, {
                             method: 'POST',
-                            body: formData,
-                            signal: controller.signal
+                            body: formData
                         });
                         
-                        clearTimeout(timeoutId);
                         const data = await response.json();
 
                         if (response.ok) {
@@ -1136,11 +974,7 @@
                             throw new Error(data.error || 'Failed to process audio');
                         }
                     } catch (error) {
-                        if (error.name === 'AbortError') {
-                            showError('Audio processing timed out. Please try a shorter recording.');
-                        } else {
-                            showError(error.message || 'Failed to process voice input. Please try again.');
-                        }
+                        showError(error.message || 'Failed to process voice input.');
                         showStatus('Audio processing failed', 'error');
                         console.error('Voice processing error:', error);
                     } finally {
@@ -1148,23 +982,9 @@
                     }
                 };
                 
-                mediaRecorder.onerror = (event) => {
-                    console.error('MediaRecorder error:', event.error);
-                    showError('Recording failed. Please try again.');
-                    resetRecordingUI(mode);
-                };
-                
             } catch (err) {
                 console.error('Error accessing microphone:', err);
-                let errorMessage = 'Could not access microphone. ';
-                if (err.name === 'NotAllowedError') {
-                    errorMessage += 'Please grant microphone permission and try again.';
-                } else if (err.name === 'NotFoundError') {
-                    errorMessage += 'No microphone found.';
-                } else {
-                    errorMessage += 'Please check your microphone and try again.';
-                }
-                showError(errorMessage);
+                showError('Could not access microphone. Please grant permission and try again.');
                 showStatus('Microphone error', 'error');
             }
         }
@@ -1180,19 +1000,15 @@
             if (mode === 'initial') {
                 voiceStartBtn.classList.remove('recording');
                 voiceStartBtn.textContent = '🎙️';
-                voiceStartBtn.title = 'Voice Input';
                 updateStartButton();
             } else {
                 voiceBtn.classList.remove('recording');
                 voiceBtn.textContent = '🎤';
-                voiceBtn.title = 'Voice Input';
                 chatInput.disabled = false;
-                chatInput.placeholder = "Continue the conversation...";
                 sendBtn.disabled = false;
             }
         }
 
-        // Enhanced message display
         function addMessage(type, content, isVoice = false) {
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${type}-message`;
@@ -1200,14 +1016,12 @@
             const bubbleDiv = document.createElement('div');
             bubbleDiv.className = 'message-bubble';
             
-            // Add typing animation for bot messages
             if (type === 'bot') {
                 bubbleDiv.innerHTML = '';
                 messageDiv.appendChild(bubbleDiv);
                 messages.appendChild(messageDiv);
                 scrollToBottom();
                 
-                // Simulate typing effect
                 let i = 0;
                 const typingSpeed = 30;
                 function typeWriter() {
@@ -1227,8 +1041,6 @@
             }
             
             messageCount++;
-            
-            // Auto-scroll animation
             setTimeout(scrollToBottom, 100);
         }
 
@@ -1258,7 +1070,6 @@
             messages.appendChild(errorDiv);
             scrollToBottom();
             
-            // Auto-remove error after 8 seconds
             setTimeout(() => {
                 if (errorDiv.parentNode) {
                     errorDiv.remove();
@@ -1271,13 +1082,11 @@
             statusIndicator.className = `status-indicator ${type}`;
             statusIndicator.style.display = 'block';
             
-            // Auto-hide status after 3 seconds
             setTimeout(() => {
                 statusIndicator.style.display = 'none';
             }, 3000);
         }
 
-        // Enhanced error handling for network issues
         window.addEventListener('online', () => {
             showStatus('Connection restored', 'connected');
         });
@@ -1286,17 +1095,14 @@
             showStatus('Connection lost', 'error');
         });
 
-        // Cleanup on page unload
         window.addEventListener('beforeunload', () => {
+            stopWebcam();
             if (isRecording) {
                 stopRecording();
             }
-            if (animationId) {
-                cancelAnimationFrame(animationId);
-            }
         });
 
-        // Initialize status
+        
         setTimeout(() => {
             showStatus('Ready to chat', 'connected');
         }, 1000);
